@@ -1,54 +1,85 @@
 import Delta from 'quill-delta'
 import { posix as path } from 'path'
 
+const DEFAULT_OPTIONS = {
+  processImage() {},
+  notfoundError() {},
+}
+
 export default class Parser {
 
-  pAttrs = {}
+  /**
+   * p > pPr
+   */
+  paragraphAttrs = {}
 
-  rAttrs = {}
+  /**
+   * pPr > rPr
+   */
+  baseRunAttrs = {}
 
-  baseRAttrs = {}
+  /**
+   * r > rPr
+   */
+  runAttrs = {}
 
-  defaultRAttrs = {}
+  /**
+   * pPrDefault > rPr
+   */
+  defaultRunAttrs = {}
 
-  defaultPAttrs = {}
+  /**
+   * pPrDefault > pPr > rPr
+   * rPrDefault > rPr
+   */
+  defaultParagraphAttrs = {}
 
+  /**
+   * hyperlink
+   * instrText: HYPERLINK
+   */
   link = null
 
+  /**
+   * fldChar
+   */
   fieldStack = []
 
+  /**
+   * result
+   */
   delta = new Delta
 
   constructor(docx, options) {
     this.docx = docx
-    this.options = options
+    this.options = Object.assign({}, DEFAULT_OPTIONS, options)
   }
 
   parse = async () => {
     await this.parseDefaults(this.docx.styles['w:docDefaults'])
-    await this.parseDocument(this.docx.document)
+    await this.parseBody(this.docx.document['w:body'])
   }
 
   parseDefaults = item => {
     if (item['w:pPrDefault'] && item['w:pPrDefault']['w:pPr']) {
       this.parseParagraphProps(item['w:pPrDefault']['w:pPr'])
-      this.defaultPAttrs = this.pAttrs
-      this.defaultRAttrs = this.baseRAttrs
+      this.defaultParagraphAttrs = this.paragraphAttrs
+      this.defaultRunAttrs = this.baseRunAttrs
     }
     if (item['w:rPrDefault'] && item['w:rPrDefault']['w:rPr']) {
-      Object.assign(this.defaultRAttrs, this.parseRunProps(item['w:rPrDefault']['w:rPr']))
+      Object.assign(this.defaultRunAttrs, this.parseRunProps(item['w:rPrDefault']['w:rPr']))
     }
   }
 
-  parseDocument = async item => {
-    await each(item['w:body'].$children, {
+  parseBody = async item => {
+    await each(item.$children, {
       'w:p': this.parseParagraph,
     })
   }
 
   parseParagraph = async item => {
-    this.pAttrs = Object.assign({}, this.defaultPAttrs)
-    this.baseRAttrs = Object.assign({}, this.defaultRAttrs)
+    this.paragraphAttrs = Object.assign({}, this.defaultParagraphAttrs)
+    this.baseRunAttrs = Object.assign({}, this.defaultRunAttrs)
 
     if (item['w:pPr']) {
       await this.parseParagraphProps(item['w:pPr'])
@@ -59,24 +90,24 @@ export default class Parser {
       'w:hyperlink': this.parseHyperlink,
     })
 
-    this.delta = this.delta.insert('\n', this.pAttrs)
+    this.delta = this.delta.insert('\n', this.paragraphAttrs)
   }
 
   parseRun = async item => {
-    this.rAttrs = this.baseRAttrs
+    this.runAttrs = Object.assign({}, this.baseRunAttrs)
 
     if (item['w:rPr']) {
-      this.rAttrs = Object.assign({}, this.rAttrs, this.parseRunProps(item['w:rPr']))
+      Object.assign(this.runAttrs, this.parseRunProps(item['w:rPr']))
     }
 
     if (this.link) {
-      this.rAttrs.link = this.link
+      this.runAttrs.link = this.link
     } else {
       const HYPERLINK_REGEX = /^HYPERLINK "(.+)"$/
       const field = this.fieldStack.find(field => field.content.match(HYPERLINK_REGEX))
 
       if (field) {
-        this.rAttrs.link = field.content.match(HYPERLINK_REGEX)[1]
+        this.runAttrs.link = field.content.match(HYPERLINK_REGEX)[1]
       }
     }
 
@@ -96,14 +127,18 @@ export default class Parser {
 
     this.link = this.getRelationById(item['@r:id'])
 
-    await each(item.$children, { 'w:r': this.parseRun })
+    await each(item.$children, {
+      'w:r': this.parseRun,
+      'w:hyperlink': this.parseHyperlink,
+    })
 
     this.link = origin
   }
 
   parseBreak = item => {
+    // @todo generate soft break
     // @todo handle page break
-    this.delta = this.delta.insert('\n', this.pAttrs)
+    this.delta = this.delta.insert('\n', this.paragraphAttrs)
   }
 
   parseText = item => {
@@ -111,11 +146,11 @@ export default class Parser {
     if (!content && item['@xml:space'] === 'preserve') {
       content = ' '
     }
-    this.delta = this.delta.insert(content, this.rAttrs)
+    this.delta = this.delta.insert(content, this.runAttrs)
   }
 
   parseTab = item => {
-    this.delta = this.delta.insert('\t', this.rAttrs)
+    this.delta = this.delta.insert('\t', this.runAttrs)
   }
 
   parseFieldChar = item => {
@@ -192,53 +227,82 @@ export default class Parser {
 
   parseParagraphProps = item => {
 
-    const styleId = val(item['w:pStyle'])
-    if (styleId) {
-      const style = this.getStyleById(styleId)
+    if (!item) {
+      return
+    }
 
-      if (/^heading [1-6]$/i.test(val(style['w:name']))) {
-
-        this.pAttrs.header = val(style['w:name']).slice(8) | 0
-
-      } else {
-
-        if (style['w:pPr']) {
-          this.parseParagraphProps(style['w:pPr'])
-        }
-        if (style['w:rPr']) {
-          Object.assign(this.baseRAttrs, this.parseRunProps(style['w:rPr']))
-        }
-      }
+    if (val(item['w:pStyle'])) {
+      this.handleParagraphStyle(val(item['w:pStyle']))
     }
 
     if (item['w:rPr']) {
-      Object.assign(this.baseRAttrs, this.parseRunProps(item['w:rPr']))
+      Object.assign(this.baseRunAttrs, this.parseRunProps(item['w:rPr']))
     }
 
     const align = val(item['w:jc'])
     if (['left', 'center', 'right'].includes(align)) {
-      this.pAttrs.align = align
+      this.paragraphAttrs.align = align
     }
 
     if (item['w:numPr']) {
-      const number = this.docx.numbering.numbers.find(num => num['@w:numId'] === val(item['w:numPr']['w:numId']))
-      const abstract = this.docx.numbering.abstracts.find(abstract => abstract['@w:abstractNumId'] === val(number['w:abstractNumId']))
-      const level = abstract.$children.find(level => level['@w:ilvl'] === val(item['w:numPr']['w:ilvl']))
+      this.handleParagraphNumbering(item['w:numPr'])
+    }
+  }
 
-      this.pAttrs.indent = level['@w:ilvl'] | 0
-      this.pAttrs.list = {
-        ordered: val(level['w:numFmt']) !== 'bullet',
-      }
+  handleParagraphStyle = styleId => {
+    const style = this.getStyleById(styleId)
+
+    if (!style) {
+      return
+    }
+
+    if (/^heading [1-6]$/i.test(val(style['w:name']))) {
+      this.paragraphAttrs.header = val(style['w:name']).slice(8) | 0
+      return
+    }
+
+    this.parseParagraphProps(style['w:pPr'])
+    Object.assign(this.baseRunAttrs, this.parseRunProps(style['w:rPr']))
+  }
+
+  handleParagraphNumbering = item => {
+    const number = this.docx.numbering.numbers.find(num => num['@w:numId'] === val(item['w:numId']))
+
+    if (!number) {
+      this.options.notfoundError('number', val(item['w:numId']))
+      return
+    }
+
+    const abstract = this.docx.numbering.abstracts.find(abstract => abstract['@w:abstractNumId'] === val(number['w:abstractNumId']))
+
+    if (!abstract) {
+      this.options.notfoundError('abstract number', val(number['w:abstractNumId']))
+      return
+    }
+
+    const level = abstract.$children.find(level => level['@w:ilvl'] === val(item['w:ilvl']))
+
+    if (!level) {
+      this.options.notfoundError('level', val(item['w:ilvl']))
+      return
+    }
+
+    this.paragraphAttrs.indent = level['@w:ilvl'] | 0
+    this.paragraphAttrs.list = {
+      ordered: val(level['w:numFmt']) !== 'bullet',
     }
   }
 
   parseRunProps = item => {
     const attrs = {}
 
-    const styleId = val(item['w:rStyle'])
-    if (styleId) {
-      const style = this.getStyleById(styleId)
-      if (style['w:rPr']) {
+    if (!item) {
+      return attrs
+    }
+
+    if (val(item['w:rStyle'])) {
+      const style = this.getStyleById(val(item['w:rStyle']))
+      if (style) {
         Object.assign(attrs, this.parseRunProps(style['w:rPr']))
       }
     }
@@ -285,11 +349,19 @@ export default class Parser {
   }
 
   getRelationById(rId) {
-    return this.docx.relations.$children.find(relation => relation['@Id'] === rId)['@Target']
+    const relation = this.docx.relations.$children.find(relation => relation['@Id'] === rId)
+    if (relation) {
+      return relation['@Target']
+    }
+    this.options.notfoundError('relationship', rId)
   }
 
   getStyleById(styleId) {
-    return this.docx.styles.$children.find(style => style['@w:styleId'] === styleId)
+    const style = this.docx.styles.$children.find(style => style['@w:styleId'] === styleId)
+    if (style) {
+      return style
+    }
+    this.options.notfoundError('style', styleId)
   }
 }
 
