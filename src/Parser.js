@@ -1,3 +1,4 @@
+import units from 'units-css'
 import Delta from 'quill-delta'
 import { posix as path } from 'path'
 
@@ -101,13 +102,18 @@ export default class Parser {
     }
 
     if (this.link) {
-      this.runAttrs.link = this.link
-    } else {
-      const HYPERLINK_REGEX = /^HYPERLINK "(.+)"$/
-      const field = this.fieldStack.find(field => field.content.match(HYPERLINK_REGEX))
 
-      if (field) {
-        this.runAttrs.link = field.content.match(HYPERLINK_REGEX)[1]
+      this.runAttrs.link = this.link
+
+    } else {
+
+      const HYPERLINK_REGEX = /^HYPERLINK "(.+)"$/
+
+      for (const field of this.fieldStack) {
+        const match = field.content.match(HYPERLINK_REGEX)
+        if (match) {
+          this.runAttrs.link = match[1]
+        }
       }
     }
 
@@ -165,7 +171,9 @@ export default class Parser {
       }
 
       case 'separate': {
-        this.fieldStack[0].state = 'separate'
+        if (this.fieldStack[0]) {
+          this.fieldStack[0].state = 'separate'
+        }
         break
       }
 
@@ -177,7 +185,9 @@ export default class Parser {
   }
 
   parseFieldText = item => {
-    this.fieldStack[0].content = item.$content.trim()
+    if (this.fieldStack[0]) {
+      this.fieldStack[0].content += item.$content
+    }
   }
 
   parsePicture = async item => {
@@ -187,12 +197,20 @@ export default class Parser {
     try {
 
       const shape = item['v:shape']
-      const style = shape['@style']
+      const style = shape['@style'] || ''
 
       imgPath = this.getRelationById(shape['v:imagedata']['@r:id'])
       size = {
-        width: style.match(/\bwidth\s*:\s*([^;]+)/)[1],
-        height: style.match(/\bheight\s*:\s*([^;]+)/)[1],
+        width: style.match(/\bwidth\s*:\s*([^;]+)/),
+        height: style.match(/\bheight\s*:\s*([^;]+)/),
+      }
+
+      if (size.width) {
+        size.width = units.convert('px', size.width[1])
+      }
+
+      if (size.height) {
+        size.height = units.convert('px', size.height[1])
       }
 
     } catch (error) {
@@ -215,6 +233,16 @@ export default class Parser {
       size = {
         width: inline['wp:extent']['@cx'],
         height: inline['wp:extent']['@cy'],
+      }
+
+      // sizes are specified with twentieths of a point
+
+      if (size.width) {
+        size.width = units.convert('px', `${(size.width | 0) / 20}pt`)
+      }
+
+      if (size.height) {
+        size.height = units.convert('px', `${(size.height | 0) / 20}pt`)
       }
 
     } catch (error) {
@@ -324,14 +352,16 @@ export default class Parser {
       attrs.underline = true
     }
 
+    // font sizes are specified with half-point
+    // see: https://startbigthinksmall.wordpress.com/2010/01/04/points-inches-and-emus-measuring-units-in-office-open-xml/
     const size = val(item['w:sz'])
     if (size) {
-      attrs.size = size | 0
+      attrs.size = units.convert('px', `${(size | 0) / 2}pt`)
     }
 
     const color = val(item['w:color'])
     if (color) {
-      attrs.color = color
+      attrs.color = `#${color}`
     }
 
     const script = val(item['w:vertAlign'])
