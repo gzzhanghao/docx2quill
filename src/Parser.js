@@ -317,8 +317,10 @@ export default class Parser {
     }
 
     this.paragraphAttrs.indent = level['@w:ilvl'] | 0
-    this.paragraphAttrs.list = {
-      ordered: val(level['w:numFmt']) !== 'bullet',
+
+    this.paragraphAttrs.list = 'ordered'
+    if (val(level['w:numFmt']) === 'bullet') {
+      this.paragraphAttrs.list = 'bullet'
     }
   }
 
