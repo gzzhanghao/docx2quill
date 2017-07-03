@@ -352,6 +352,10 @@ export default class Parser {
       attrs.underline = true
     }
 
+    if (item['w:rFonts'] && item['w:rFonts']['@w:ascii']) {
+      attrs.font = item['w:rFonts']['@w:ascii']
+    }
+
     // font sizes are specified with half-point
     // see: https://startbigthinksmall.wordpress.com/2010/01/04/points-inches-and-emus-measuring-units-in-office-open-xml/
     const size = val(item['w:sz'])
