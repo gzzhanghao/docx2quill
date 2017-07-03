@@ -1,0 +1,22 @@
+{
+  "name": "quill-docx",
+  "version": "0.1.0",
+  "description": "",
+  "main": "lib",
+  "scripts": {
+    "build": "babel src -d lib",
+    "watch": "babel src -d lib --watch",
+    "postinstall": "npm run build"
+  },
+  "author": "Jason <jason.daurus@gmail.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "babel-cli": "^6.24.1",
+    "babel-plugin-transform-class-properties": "^6.24.1",
+    "babel-preset-env": "^1.5.2"
+  },
+  "dependencies": {
+    "@gzzhanghao/docx": "^0.1.1",
+    "quill-delta": "^3.5.0"
+  }
+}
