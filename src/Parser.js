@@ -239,11 +239,11 @@ export default class Parser {
       // see: https://msdn.microsoft.com/en-us/library/documentformat.openxml.drawing.wordprocessing.extent(v=office.14).aspx
 
       if (size.width) {
-        size.width = units.convert('px', `${(size.width | 0) / 914400 * 72}pt`)
+        size.width = (size.width | 0) / 914400 * 72
       }
 
       if (size.height) {
-        size.height = units.convert('px', `${(size.height | 0) / 914400 * 72}pt`)
+        size.height = (size.height | 0) / 914400 * 72
       }
 
     } catch (error) {
