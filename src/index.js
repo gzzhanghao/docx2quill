@@ -1,4 +1,4 @@
-import parseDocx from 'docx'
+import parseDocx from '@gzzhanghao/docx'
 import Parser from './Parser'
 
 export { Parser }
