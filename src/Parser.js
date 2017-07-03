@@ -235,14 +235,15 @@ export default class Parser {
         height: inline['wp:extent']['@cy'],
       }
 
-      // sizes are specified with twentieths of a point
+      // sizes are specified with EMUs
+      // see: https://msdn.microsoft.com/en-us/library/documentformat.openxml.drawing.wordprocessing.extent(v=office.14).aspx
 
       if (size.width) {
-        size.width = units.convert('px', `${(size.width | 0) / 20}pt`)
+        size.width = units.convert('px', `${(size.width | 0) / 914400 * 72}pt`)
       }
 
       if (size.height) {
-        size.height = units.convert('px', `${(size.height | 0) / 20}pt`)
+        size.height = units.convert('px', `${(size.height | 0) / 914400 * 72}pt`)
       }
 
     } catch (error) {
