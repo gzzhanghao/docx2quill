@@ -1,12 +1,15 @@
 {
   "name": "@gzzhanghao/quill-docx",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "",
   "main": "lib",
+  "files": [
+    "lib"
+  ],
   "scripts": {
     "build": "babel src -d lib",
     "watch": "babel src -d lib --watch",
-    "postinstall": "npm run build"
+    "prepare": "npm run build"
   },
   "author": "Jason <jason.daurus@gmail.com>",
   "license": "MIT",
