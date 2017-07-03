@@ -19,7 +19,7 @@
     "babel-preset-env": "^1.5.2"
   },
   "dependencies": {
-    "@gzzhanghao/docx": "^0.1.1",
+    "@gzzhanghao/docx": "^0.1.2",
     "quill-delta": "^3.5.0",
     "units-css": "^0.4.0"
   }
