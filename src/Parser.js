@@ -110,7 +110,7 @@ export default class Parser {
       const HYPERLINK_REGEX = /^HYPERLINK "(.+)"$/
 
       for (const field of this.fieldStack) {
-        const match = field.content.match(HYPERLINK_REGEX)
+        const match = field.content.trim().match(HYPERLINK_REGEX)
         if (match) {
           this.runAttrs.link = match[1]
         }
