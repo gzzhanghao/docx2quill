@@ -1,7 +1,7 @@
 {
-  "name": "@gzzhanghao/quill-docx",
-  "version": "0.1.9",
-  "description": "",
+  "name": "@gzzhanghao/docx2quill",
+  "version": "0.1.10",
+  "description": "Convert DOCX to Quill Delta.",
   "main": "lib",
   "files": [
     "lib"
@@ -22,5 +22,16 @@
     "@gzzhanghao/docx": "^0.1.2",
     "quill-delta": "^3.5.0",
     "units-css": "^0.4.0"
-  }
+  },
+  "directories": {
+    "lib": "lib"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gzzhanghao/docx2quill.git"
+  },
+  "bugs": {
+    "url": "https://github.com/gzzhanghao/docx2quill/issues"
+  },
+  "homepage": "https://github.com/gzzhanghao/docx2quill#readme"
 }
