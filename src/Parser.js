@@ -125,6 +125,8 @@ export default class Parser {
       'w:instrText': this.parseFieldText,
       'w:pict': this.parsePicture,
       'w:drawing': this.parseDrawing,
+      'w:noBreakHyphen': this.parseNoBreakHypen,
+      'mc:AlternateContent': this.parseAlternateContent,
     })
   }
 
@@ -197,6 +199,11 @@ export default class Parser {
     try {
 
       const shape = item['v:shape']
+
+      if (shape['v:textbox']) {
+        return this.parseTextBox(shape['v:textbox'])
+      }
+
       const style = shape['@style'] || ''
 
       imgPath = this.getRelationById(shape['v:imagedata']['@r:id'])
@@ -254,6 +261,27 @@ export default class Parser {
     await this.processImage(imgPath, size)
   }
 
+  parseTextBox = item => {
+    try {
+
+      return this.parseBody(item['w:txbxContent'])
+
+    } catch (error) {
+
+      return
+    }
+  }
+
+  parseNoBreakHypen = item => {
+    this.delta = this.delta.insert('\u2011', this.runAttrs)
+  }
+
+  parseAlternateContent = item => {
+    if (item['mc:Fallback'] && item['mc:Fallback']['w:pict']) {
+      return this.parsePicture(item['mc:Fallback']['w:pict'])
+    }
+  }
+
   parseParagraphProps = item => {
 
     if (!item) {
@@ -262,10 +290,6 @@ export default class Parser {
 
     if (val(item['w:pStyle'])) {
       this.handleParagraphStyle(val(item['w:pStyle']))
-    }
-
-    if (item['w:rPr']) {
-      Object.assign(this.baseRunAttrs, this.parseRunProps(item['w:rPr']))
     }
 
     const align = val(item['w:jc'])
