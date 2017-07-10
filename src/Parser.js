@@ -57,7 +57,9 @@ export default class Parser {
   }
 
   parse = async () => {
-    await this.parseDefaults(this.docx.styles['w:docDefaults'])
+    if (this.docx.styles) {
+      await this.parseDefaults(this.docx.styles['w:docDefaults'])
+    }
     await this.parseBody(this.docx.document['w:body'])
   }
 
@@ -418,9 +420,11 @@ export default class Parser {
   }
 
   getStyleById(styleId) {
-    const style = this.docx.styles.$children.find(style => style['@w:styleId'] === styleId)
-    if (style) {
-      return style
+    if (this.docx.styles) {
+      const style = this.docx.styles.$children.find(style => style['@w:styleId'] === styleId)
+      if (style) {
+        return style
+      }
     }
     this.options.notfoundError('style', styleId)
   }
