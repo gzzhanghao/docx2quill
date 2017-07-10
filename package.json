@@ -1,6 +1,6 @@
 {
   "name": "@gzzhanghao/docx2quill",
-  "version": "0.1.10",
+  "version": "0.2.0",
   "description": "Convert DOCX to Quill Delta.",
   "main": "lib",
   "files": [
