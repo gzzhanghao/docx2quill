@@ -195,51 +195,61 @@ export default class Parser {
   }
 
   parsePicture = async item => {
-    let imgPath = null
-    let size = null
+    await each(item.$children, {
+      'v:shape': this.parseShape,
+      'v:group': this.parseGroup,
+    })
+  }
 
-    try {
+  parseGroup = async item => {
+    await each(item.$children, {
+      'v:shape': this.parseShape,
+      'v:group': this.parseGroup,
+    })
+  }
 
-      const shape = item['v:shape']
+  parseShape = async item => {
 
-      if (shape['v:textbox']) {
-        return this.parseTextBox(shape['v:textbox'])
-      }
+    await each(item.$children, {
 
-      const style = shape['@style'] || ''
+      'v:textbox': this.parseTextBox,
 
-      imgPath = this.getRelationById(shape['v:imagedata']['@r:id'])
-      size = {
-        width: style.match(/\bwidth\s*:\s*([^;]+)/),
-        height: style.match(/\bheight\s*:\s*([^;]+)/),
-      }
+      'v:imagedata': async imgData => {
+        try {
 
-      if (size.width) {
-        size.width = units.convert('px', size.width[1])
-      }
+          const style = item['@style'] || ''
 
-      if (size.height) {
-        size.height = units.convert('px', size.height[1])
-      }
+          const imgPath = this.getRelationById(item['v:imagedata']['@r:id'])
+          const size = {
+            width: style.match(/\bwidth\s*:\s*([^;]+)/),
+            height: style.match(/\bheight\s*:\s*([^;]+)/),
+          }
 
-    } catch (error) {
+          if (size.width) {
+            size.width = units.convert('px', size.width[1])
+          }
 
-      return
-    }
+          if (size.height) {
+            size.height = units.convert('px', size.height[1])
+          }
 
-    await this.processImage(imgPath, size)
+          return this.processImage(imgPath, size)
+
+        } catch (error) {
+
+          // noop
+        }
+      },
+    })
   }
 
   parseDrawing = async item => {
-    let imgPath = null
-    let size = null
-
     try {
 
-      const inline = item['wp:inline']
+      const inline = item['wp:inline'] || item['wp:anchor']
 
-      imgPath = this.getRelationById(inline['a:graphic']['a:graphicData']['pic:pic']['pic:blipFill']['a:blip']['@r:embed'])
-      size = {
+      const imgPath = this.getRelationById(inline['a:graphic']['a:graphicData']['pic:pic']['pic:blipFill']['a:blip']['@r:embed'])
+      const size = {
         width: inline['wp:extent']['@cx'],
         height: inline['wp:extent']['@cy'],
       }
@@ -255,22 +265,22 @@ export default class Parser {
         size.height = (size.height | 0) / 914400 * 72
       }
 
+      return this.processImage(imgPath, size)
+
     } catch (error) {
 
-      return
+      // noop
     }
-
-    await this.processImage(imgPath, size)
   }
 
-  parseTextBox = item => {
+  parseTextBox = async item => {
     try {
 
-      return this.parseBody(item['w:txbxContent'])
+      await this.parseBody(item['w:txbxContent'])
 
     } catch (error) {
 
-      return
+      // noop
     }
   }
 
