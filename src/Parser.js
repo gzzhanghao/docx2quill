@@ -12,17 +12,17 @@ export default class Parser {
   /**
    * p > pPr
    */
-  paragraphAttrs = {}
+  paragraphAttrs = []
 
   /**
    * pPr > rPr
    */
-  baseRunAttrs = {}
+  baseRunAttrs = []
 
   /**
    * r > rPr
    */
-  runAttrs = {}
+  runAttrs = []
 
   /**
    * pPrDefault > rPr
@@ -64,11 +64,18 @@ export default class Parser {
   }
 
   parseDefaults = item => {
+
     if (item['w:pPrDefault'] && item['w:pPrDefault']['w:pPr']) {
+
+      this.paragraphAttrs[0] = {}
+      this.baseRunAttrs[0] = {}
+
       this.parseParagraphProps(item['w:pPrDefault']['w:pPr'])
-      this.defaultParagraphAttrs = this.paragraphAttrs
-      this.defaultRunAttrs = this.baseRunAttrs
+
+      this.defaultParagraphAttrs = this.paragraphAttrs[0]
+      this.defaultRunAttrs = this.baseRunAttrs[0]
     }
+
     if (item['w:rPrDefault'] && item['w:rPrDefault']['w:rPr']) {
       Object.assign(this.defaultRunAttrs, this.parseRunProps(item['w:rPrDefault']['w:rPr']))
     }
@@ -81,8 +88,8 @@ export default class Parser {
   }
 
   parseParagraph = async item => {
-    this.paragraphAttrs = Object.assign({}, this.defaultParagraphAttrs)
-    this.baseRunAttrs = Object.assign({}, this.defaultRunAttrs)
+    this.paragraphAttrs.unshift(Object.assign({}, this.defaultParagraphAttrs))
+    this.baseRunAttrs.unshift(Object.assign({}, this.defaultRunAttrs))
 
     if (item['w:pPr']) {
       await this.parseParagraphProps(item['w:pPr'])
@@ -93,19 +100,22 @@ export default class Parser {
       'w:hyperlink': this.parseHyperlink,
     })
 
-    this.delta = this.delta.insert('\n', this.paragraphAttrs)
+    this.delta = this.delta.insert('\n', this.paragraphAttrs[0])
+
+    this.paragraphAttrs.shift()
+    this.baseRunAttrs.shift()
   }
 
   parseRun = async item => {
-    this.runAttrs = Object.assign({}, this.baseRunAttrs)
+    this.runAttrs.unshift(Object.assign({}, this.baseRunAttrs[0]))
 
     if (item['w:rPr']) {
-      Object.assign(this.runAttrs, this.parseRunProps(item['w:rPr']))
+      Object.assign(this.runAttrs[0], this.parseRunProps(item['w:rPr']))
     }
 
     if (this.link) {
 
-      this.runAttrs.link = this.link
+      this.runAttrs[0].link = this.link
 
     } else {
 
@@ -114,7 +124,7 @@ export default class Parser {
       for (const field of this.fieldStack) {
         const match = field.content.trim().match(HYPERLINK_REGEX)
         if (match) {
-          this.runAttrs.link = match[1]
+          this.runAttrs[0].link = match[1]
         }
       }
     }
@@ -130,6 +140,8 @@ export default class Parser {
       'w:noBreakHyphen': this.parseNoBreakHypen,
       'mc:AlternateContent': this.parseAlternateContent,
     })
+
+    this.runAttrs.shift()
   }
 
   parseHyperlink = async item => {
@@ -148,7 +160,7 @@ export default class Parser {
   parseBreak = item => {
     // @todo generate soft break
     // @todo handle page break
-    this.delta = this.delta.insert('\n', this.paragraphAttrs)
+    this.delta = this.delta.insert('\n', this.paragraphAttrs[0])
   }
 
   parseText = item => {
@@ -156,11 +168,11 @@ export default class Parser {
     if (!content && item['@xml:space'] === 'preserve') {
       content = ' '
     }
-    this.delta = this.delta.insert(content, this.runAttrs)
+    this.delta = this.delta.insert(content, this.runAttrs[0])
   }
 
   parseTab = item => {
-    this.delta = this.delta.insert('\t', this.runAttrs)
+    this.delta = this.delta.insert('\t', this.runAttrs[0])
   }
 
   parseFieldChar = item => {
@@ -285,7 +297,7 @@ export default class Parser {
   }
 
   parseNoBreakHypen = item => {
-    this.delta = this.delta.insert('\u2011', this.runAttrs)
+    this.delta = this.delta.insert('\u2011', this.runAttrs[0])
   }
 
   parseAlternateContent = item => {
@@ -306,7 +318,7 @@ export default class Parser {
 
     const align = val(item['w:jc'])
     if (['left', 'center', 'right'].includes(align)) {
-      this.paragraphAttrs.align = align
+      this.paragraphAttrs[0].align = align
     }
 
     if (item['w:numPr']) {
@@ -322,7 +334,7 @@ export default class Parser {
     }
 
     if (/^heading [1-6]$/i.test(val(style['w:name']))) {
-      this.paragraphAttrs.header = val(style['w:name']).slice(8) | 0
+      this.paragraphAttrs[0].header = val(style['w:name']).slice(8) | 0
       return
     }
 
@@ -352,11 +364,11 @@ export default class Parser {
       return
     }
 
-    this.paragraphAttrs.indent = level['@w:ilvl'] | 0
+    this.paragraphAttrs[0].indent = level['@w:ilvl'] | 0
 
-    this.paragraphAttrs.list = 'ordered'
+    this.paragraphAttrs[0].list = 'ordered'
     if (val(level['w:numFmt']) === 'bullet') {
-      this.paragraphAttrs.list = 'bullet'
+      this.paragraphAttrs[0].list = 'bullet'
     }
   }
 
