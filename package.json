@@ -1,6 +1,6 @@
 {
   "name": "@gzzhanghao/docx2quill",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Convert DOCX to Quill Delta.",
   "main": "lib",
   "files": [
@@ -19,7 +19,7 @@
     "babel-preset-env": "^1.5.2"
   },
   "dependencies": {
-    "@gzzhanghao/docx": "^0.1.5",
+    "@gzzhanghao/docx": "^0.2.0",
     "quill-delta": "^3.5.0",
     "units-css": "^0.4.0"
   },

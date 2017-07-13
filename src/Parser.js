@@ -57,7 +57,7 @@ export default class Parser {
   }
 
   parse = async () => {
-    if (this.docx.styles) {
+    if (this.docx.styles && this.docx.styles['w:docDefaults']) {
       await this.parseDefaults(this.docx.styles['w:docDefaults'])
     }
     await this.parseBody(this.docx.document['w:body'])
