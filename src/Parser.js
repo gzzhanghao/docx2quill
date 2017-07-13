@@ -270,11 +270,11 @@ export default class Parser {
       // see: https://msdn.microsoft.com/en-us/library/documentformat.openxml.drawing.wordprocessing.extent(v=office.14).aspx
 
       if (size.width) {
-        size.width = (size.width | 0) / 914400 * 72
+        size.width = (size.width | 0) / 914400 * 96
       }
 
       if (size.height) {
-        size.height = (size.height | 0) / 914400 * 72
+        size.height = (size.height | 0) / 914400 * 96
       }
 
       return this.processImage(imgPath, size)
